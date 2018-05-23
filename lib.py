@@ -3,7 +3,7 @@ import numpy as np
 cases = {'quebrados' : 0, 'bons' : 1, 'sujeira' : -1, 0 : 'quebrados', 1 : 'bons', -1 : 'sujeira'}
 configHSV = (open("config-hsv.txt", 'r').readlines())
 configHSVBorder = (open("config-hsv-borda.txt", 'r').readlines())
-configCorte = int(open('config_corte.txt', "r").readlines()[0])
+configCorte = int(open('config-corte.txt', "r").readlines()[0])
 def thresholdHSV(image):
 	hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
 	lower_hsv = np.array([int(configHSV[0]),int(configHSV[1]),int(configHSV[2])])
@@ -16,7 +16,6 @@ def separar(image):
 	img = removeMask(image)
 	img_th = thresholdHSVBorder(img)
 	img = removeMask(img,img_th)
-	cv2.imshow("gray", img)
 	img_gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 	# noise removal
 	kernel = np.ones((1,1),np.uint8)
@@ -40,14 +39,6 @@ def thresholdHSVBorder(image):
 def removeMask(image, mask = np.array((0))):
 	mask = thresholdHSV(image) if not mask.any() else mask
 	return cv2.bitwise_and(image,image, mask = mask)
-
-def getHistogramsHSV(image):
-	image = cv2.cvtColor(removeBackGround(image), cv2.COLOR_BGR2HSV)
-	colors = ['h','s','v']
-	hist = {}
-	for n,x in enumerate(colors):
-		hist[x] = cv2.calcHist([image],[n],None,[256],[3,256])
-	return hist	
 
 def getAreaMinRec(image):
 	thresh = thresholdHSV(image)

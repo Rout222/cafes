@@ -1,7 +1,7 @@
 # import the necessary packages
 from __future__ import print_function
 import cv2
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 import imutils
 import numpy as np
 #from scipy import signal
@@ -43,8 +43,7 @@ def showMinRec(image):
 	box = cv2.boxPoints(rect)
 	box = np.int0(box)
 	cv2.drawContours(image,[box],0,(0,0,255),2)
-	cv2.imshow("a",image)
-	cv2.waitKey(0)
+	return image
 
 def getAreaMinRec(image):
 	thresh = thresholdHSV(image)
@@ -80,9 +79,8 @@ def showMinCircle(image):
 	cv2.circle(circle,(int(c[0]), int(c[1])),int(r),(0,0,250),-1)
 	ellipse = cv2.fitEllipse(cnt)
 	cv2.ellipse(elipse,ellipse,(0,255,0),2)
-	cv2.imshow("circle",circle)
-	cv2.imshow("elipse",elipse)
-	cv2.waitKey(0)
+	return [circle,elipse]
+
 def getAreaMinCircle(image):
 	thresh = thresholdHSV(image)
 	x, contours,hierarchy = cv2.findContours(thresh,2,1)
@@ -114,8 +112,7 @@ def getHistogramPeak(histograms):
 	return dictionary
 
 def show(image):
-	thresh = thresholdHSV(image)
-	cv2.imshow('t',thresh)
+	thresh = thresholdHSV(removeBackGround(image))
 	_, contours,hierarchy = cv2.findContours(thresh,2,1)
 	bx = 0
 	for n,x in enumerate(contours):
@@ -132,9 +129,7 @@ def show(image):
 	    far = tuple(cnt[f][0])
 	    cv2.line(image,start,end,[0,255,0],2)
 	    cv2.circle(image,far,5,[0,0,255],-1)
-	cv2.imshow('img',image)
-	cv2.waitKey(0)
-	cv2.destroyAllWindows()
+	return image
 def distanciaMaiorDefeito(image):
 	thresh = thresholdHSV(image)
 	_, contours,hierarchy = cv2.findContours(thresh,2,1)

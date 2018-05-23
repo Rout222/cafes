@@ -1,8 +1,5 @@
-# import the necessary packages
 from __future__ import print_function
 import cv2
-from matplotlib import pyplot as plt
-import imutils
 import numpy as np
 from glob import glob
 import gp

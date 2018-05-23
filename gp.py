@@ -1,8 +1,8 @@
 import numpy as np
 from scipy import stats
 from sklearn.gaussian_process import GaussianProcess
-from matplotlib import pyplot as pl
-from matplotlib import cm
+# from matplotlib import pyplot as pl
+# from matplotlib import cm
 from sklearn import metrics
 from sklearn.metrics import confusion_matrix
 from sklearn.gaussian_process import GaussianProcess
