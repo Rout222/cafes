@@ -12,6 +12,7 @@ def getValues(roi):
 	values.append(lib.getAreaMinElipse       (roi))
 	values.append(lib.getAreaMinRec          (roi))
 	values.append(lib.getAreaMinCircle       (roi))
+	values.append(lib.calcAreaPercentage	 (roi))
 	return values
 cont = 0 
 resultado = []
@@ -33,11 +34,12 @@ with click.progressbar(imagens, label='Processando imagens') as bar:
 					w += 10
 				roi=imgs[y:y+h,x:x+w]
 				cont +=1
-				resultadoRoi = getValues(roi) + [classe]
+				resultadoRoi = getValues(roi) + [i.split("\\")[1]]
+				#resultadoRoi = getValues(roi) + [classe]
 				resultado += [resultadoRoi]
 
 import csv
-cabecalho = ['distanciaMaiorDefeito','AreaMinElipse','AreaMinRec','AreaMinCircle', 'Classe']
+cabecalho = ['convexHull','Elipse','Rec','Circle', 'Area', 'Classe']
 with open("output.csv",'w', newline='') as resultFile:
 	wr = csv.writer(resultFile, dialect='excel')
 	with click.progressbar(resultado, label='Escrevendo arquivo output.csv') as bar:
