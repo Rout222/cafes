@@ -34,8 +34,8 @@ with click.progressbar(imagens, label='Processando imagens') as bar:
 					w += 10
 				roi=imgs[y:y+h,x:x+w]
 				cont +=1
-				resultadoRoi = getValues(roi) + [i.split("\\")[1]]
-				#resultadoRoi = getValues(roi) + [classe]
+				#resultadoRoi = getValues(roi) + [i.split("\\")[1]]
+				resultadoRoi = getValues(roi) + [classe]
 				resultado += [resultadoRoi]
 
 import csv

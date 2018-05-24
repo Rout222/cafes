@@ -24,22 +24,11 @@ padroniza <- function(s)
 
 #funçoes basicas
 
-gerarGraficos <- function(df,nome){
-  png(paste('plots/',nome,'-plot.png'))
-  attach(mtcars)
-  layout(matrix(c(1,1,2,3), 2, 2, byrow = TRUE), 
-         widths=c(3,1), heights=c(1,2))
-  plot(df, type="p", xlab="data", ylab="valor", main=nome)
-  
-  hist(df$x, main=paste("Histograma"))
-  
-  boxplot(df$x, main=paste("Boxplot"))
-  dev.off()
-}
 x <- dados[,-length(dados)] # retira a classificação
 
 
 y <- dados$Classe # classificaçao
+#y <- factor(dados$Classe) # classificaçao
 
 
 #gerar os gráficos
@@ -47,8 +36,7 @@ col <- c("DistanciaMaiorDefeito","AreaMinElipse","AreaMinRec","AreaMinCircle")
 
 for (i in seq(1,length(x))) {
   df <- data.frame(x[i],y)
-  colnames(df) <- c("x","y")
-  gerarGraficos(df, col[i])  
+  colnames(df) <- c("x","y")  
 }
 
 indicesDeTreino = NULL
@@ -89,7 +77,6 @@ for (i in seq(1,length(inputTeste))) {
   inputTeste[,i] = padroniza(inputTeste[,i])
 }
 
-stop()
 RedeCa <- NULL
 RedeCA<-mlp(x[indicesDeTreino,], y[indicesDeTreino], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
             initFuncParams=c(-0.3, 0.3), learnFunc="Std_Backpropagation",
