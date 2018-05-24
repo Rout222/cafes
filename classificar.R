@@ -7,6 +7,7 @@ cat('\014')
 if(length(dev.list()) != 0){
   dev.off()  
 }
+set.seed(123)
 
 dados <- read.table(
   "output.csv",
@@ -21,7 +22,111 @@ padroniza <- function(s)
   
   return(retorno)
 }
-
+ajustaOutliers <- function(x, na.rm = TRUE, ...) 
+{
+  qnt <- quantile(x, probs=c(.25, .75), na.rm = na.rm, ...)
+  H <- 1.5 * IQR(x, na.rm = na.rm)
+  y <- x
+  y[x < (qnt[1] - H)] <- NA
+  y[x > (qnt[2] + H)] <- NA
+  
+  for(i in 1:length(y)) 
+  {
+    #caso o primeiro valor seja NA procura o proximo valor nao NA e coloca
+    #no lugar do NA
+    if (is.na(y[1]) == TRUE)
+    {
+      encontrou = FALSE
+      cont = 1
+      posterior = NA
+      #procura o primeiro numero POSTERIOR ao valor atual que nao seja NA
+      while (encontrou == FALSE)
+      {
+        if (is.na(y[1+cont]) == TRUE)
+        {
+          cont <- cont + 1
+        }
+        else
+        {
+          posterior <- y[1+cont];
+          encontrou <- TRUE
+        }
+      }
+      
+      y[1] <- posterior
+    }
+    
+    #caso o ultimo valor seja NA procura o primeiro valor anterior que nao NA e coloca
+    #no lugar do NA
+    if (is.na(y[length(y)]) == TRUE)
+    {
+      encontrou <- FALSE
+      cont <- 1
+      anterior <- NA
+      
+      #procura o primeiro numero ANTERIOR ao valor atual que nao seja NA
+      while (encontrou == FALSE)
+      {
+        if (is.na(y[length(y)-cont]) == TRUE)
+        {
+          cont <- cont + 1
+        }
+        else
+        {
+          anterior <- y[length(y)-cont];
+          encontrou <- TRUE
+        }
+      }
+      
+      y[length(y)] <- anterior
+    }
+    
+    
+    
+    if (is.na(y[i])==TRUE)
+    {
+      encontrou <- FALSE
+      cont <- 1
+      anterior <- NA
+      
+      #procura o primeiro numero ANTERIOR ao valor atual que nao seja NA
+      while (encontrou == FALSE)
+      {
+        if (is.na(y[i-cont]) == TRUE)
+        {
+          cont <- cont + 1
+        }
+        else
+        {
+          anterior <- y[i-cont];
+          encontrou <- TRUE
+        }
+      }
+      
+      encontrou = FALSE
+      cont = 1
+      posterior = NA
+      
+      #procura o primeiro numero POSTERIOR ao valor atual que nao seja NA
+      while (encontrou == FALSE)
+      {
+        if (is.na(y[i+cont]) == TRUE)
+        {
+          cont <- cont + 1
+        }
+        else
+        {
+          posterior <- y[i+cont];
+          encontrou <- TRUE
+        }
+      }
+      
+      #executa uma media entre o anterior e posterior valor valido na serie e insere no lugar do outlier
+      y[i] <- (anterior+posterior)/2
+    }
+  }
+  
+  return(y)}
 #funçoes basicas
 
 x <- dados[,-length(dados)] # retira a classificação
@@ -35,8 +140,7 @@ y <- dados$Classe # classificaçao
 col <- c("DistanciaMaiorDefeito","AreaMinElipse","AreaMinRec","AreaMinCircle")
 
 for (i in seq(1,length(x))) {
-  df <- data.frame(x[i],y)
-  colnames(df) <- c("x","y")  
+  x[,i] <- ajustaOutliers(x[,i])  
 }
 
 indicesDeTreino = NULL
@@ -46,7 +150,7 @@ indicesDeTeste2 = NULL
 #separa os indices em 3 grupos, de 60%, 20%, 20%, por tipo
 for (i in unique(y)) {
   indices = which(y==(i))
-  indices = sample(indices)
+  # indices = sample(indices)
   size    = length(indices)
   treino = 1:(floor(0.6*size))
   teste1 = (floor(0.6*size)+1):(floor(0.8*size))
@@ -56,10 +160,10 @@ for (i in unique(y)) {
   indicesDeTeste2 = c(indicesDeTeste2, indices[teste2])
 }
 
-nNeuronios = 20
-maxEpocas  = 30000
+nNeuronios = 5
+maxEpocas  = 10000
 
-inputTeste =  data.frame( #input que eu usei em python
+input =  data.frame( #input que eu usei em python
   x[,1],
   x[,2]/x[,5],
   x[,3]/x[,5],
@@ -69,31 +173,28 @@ inputTeste =  data.frame( #input que eu usei em python
   x[,4]/x[,3]
 )
 
-for (i in seq(1,length(x))) {
-  x[,i] = padroniza(x[,i])
+output = data.frame(
+  rep(-1,length(y)),
+  rep(-1,length(y)),
+  rep(-1,length(y))
+)
+colnames(output) <- c("inteiro","quebrado","impureza")
+
+for (i in unique(y)) {
+  output[which(y==i),(i+1)] <- 1
+}
+for (i in seq(1,length(input))) {
+  input[,i] = padroniza(input[,i])
 }
 
-for (i in seq(1,length(inputTeste))) {
-  inputTeste[,i] = padroniza(inputTeste[,i])
-}
-
-RedeCa <- NULL
-RedeCA<-mlp(x[indicesDeTreino,], y[indicesDeTreino], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
+RedeCA<- NULL
+RedeCA<-mlp(input[indicesDeTreino,], output[indicesDeTreino,], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
             initFuncParams=c(-0.3, 0.3), learnFunc="Std_Backpropagation",
-            learnFuncParams=c(0.051), updateFunc="Topological_Order",
+            learnFuncParams=c(0.5), updateFunc="Topological_Order",
             updateFuncParams=c(0), hiddenActFunc="Act_Logistic",
             shufflePatterns=F, linOut=TRUE)
 
 plot(RedeCA$IterativeFitError,type="l",main="Erro da MLP CA")
-print(paste( "Erro quadrado médio do treino modo 1, " ,mean(sqrt((y[indicesDeTreino]-predict(RedeCA, x[indicesDeTreino,]))^2))))
+print(paste( "Erro da ultima época, " ,RedeCA$IterativeFitError[maxEpocas]))
 
-#testando rede com as entradas q eu tava testando no python
-RedeCA2<- NULL
-RedeCA2<-mlp(inputTeste[indicesDeTreino,], y[indicesDeTreino], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
-            initFuncParams=c(-0.3, 0.3), learnFunc="Std_Backpropagation",
-            learnFuncParams=c(0.051), updateFunc="Topological_Order",
-            updateFuncParams=c(0), hiddenActFunc="Act_Logistic",
-            shufflePatterns=F, linOut=TRUE)
-
-plot(RedeCA2$IterativeFitError,type="l",main="Erro da MLP CA")
-print(paste( "Erro quadrado médio do treino, " ,mean(sqrt((y[indicesDeTreino]-predict(RedeCA2, inputTeste[indicesDeTreino,]))^2))))
+#print(confusionMatrix(data = yat, reference = yy, mode = "prec_recall"))
