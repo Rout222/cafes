@@ -7,7 +7,7 @@ cat('\014')
 if(length(dev.list()) != 0){
   dev.off()  
 }
-#set.seed(123)
+set.seed(123)
 
 dados <- read.table(
   "output.csv",
@@ -195,6 +195,9 @@ print(paste( "Erro da ultima época, " ,RedeCA$IterativeFitError[maxEpocas]))
 
 
 #print(confusionMatrix(data = yat, reference = yy, mode = "prec_recall"))
-print(confusionMatrix(output[indicesDeTreino,], encodeClassLabels(fitted.values(RedeCA))))
+print(confusionMatrix(
+  factor(encodeClassLabels(fitted.values(RedeCA))),
+  factor(encodeClassLabels(output[indicesDeTreino,]))
+))
                       
                 
