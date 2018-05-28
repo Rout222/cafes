@@ -7,7 +7,7 @@ cat('\014')
 if(length(dev.list()) != 0){
   dev.off()  
 }
-set.seed(123)
+#set.seed(123)
 
 dados <- read.table(
   "output.csv",
@@ -15,7 +15,11 @@ dados <- read.table(
   sep=",",
   colClasses=c(rep("numeric",5), "numeric")
   )
-
+intervalo <- function(x, min, max){
+  x[which(x > max)] <- max
+  x[which(x < min)] <- min
+  x
+}
 padroniza <- function(s)
 {
   retorno <- (as.double(s) - min(s))/(max(s) - min(s))
@@ -160,29 +164,21 @@ for (i in unique(y)) {
   indicesDeTeste2 = c(indicesDeTeste2, indices[teste2])
 }
 
-nNeuronios = 5
-maxEpocas  = 10000
+nNeuronios = 20
+maxEpocas  = 30000
 
 input =  data.frame( #input que eu usei em python
-  x[,1],
-  x[,2]/x[,5],
-  x[,3]/x[,5],
-  x[,4]/x[,5],
-  x[,2]/x[,4],
-  x[,2]/x[,3],
-  x[,4]/x[,3]
+  intervalo(x[,1],	350,1200),
+  intervalo(x[,5]/x[,2],0.87,	0.99),
+  intervalo(x[,5]/x[,3],0.74,	0.78),
+  intervalo(x[,5]/x[,4],0.38,	0.74),
+  intervalo(x[,2]/x[,4],0.4,	0.74),
+  intervalo(x[,2]/x[,3],	0.78,0.84),
+  intervalo(x[,4]/x[,3],	1.06,2.29)
 )
 
-output = data.frame(
-  rep(-1,length(y)),
-  rep(-1,length(y)),
-  rep(-1,length(y))
-)
-colnames(output) <- c("inteiro","quebrado","impureza")
+output <- decodeClassLabels(y)
 
-for (i in unique(y)) {
-  output[which(y==i),(i+1)] <- 1
-}
 for (i in seq(1,length(input))) {
   input[,i] = padroniza(input[,i])
 }
@@ -190,11 +186,15 @@ for (i in seq(1,length(input))) {
 RedeCA<- NULL
 RedeCA<-mlp(input[indicesDeTreino,], output[indicesDeTreino,], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
             initFuncParams=c(-0.3, 0.3), learnFunc="Std_Backpropagation",
-            learnFuncParams=c(0.5), updateFunc="Topological_Order",
+            learnFuncParams=c(0.3), updateFunc="Topological_Order",
             updateFuncParams=c(0), hiddenActFunc="Act_Logistic",
             shufflePatterns=F, linOut=TRUE)
 
 plot(RedeCA$IterativeFitError,type="l",main="Erro da MLP CA")
 print(paste( "Erro da ultima época, " ,RedeCA$IterativeFitError[maxEpocas]))
 
+
 #print(confusionMatrix(data = yat, reference = yy, mode = "prec_recall"))
+print(confusionMatrix(output[indicesDeTreino,], encodeClassLabels(fitted.values(RedeCA))))
+                      
+                

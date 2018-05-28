@@ -30,6 +30,21 @@ inputTeste =  data.frame( #input que eu usei em python
   x[,2]/x[,3],
   x[,4]/x[,3]
 )
+intervalo <- function(x, min, max){
+  x[which(x > max)] <- max
+  x[which(x < min)] <- min
+  x
+}
+input1 =  data.frame( #input que eu usei em python
+  intervalo(x[,1],	350,1200),
+  intervalo(x[,5]/x[,2],0.87,	0.99),
+  intervalo(x[,5]/x[,3],0.74,	0.78),
+  intervalo(x[,5]/x[,4],0.38,	0.74),
+  intervalo(x[,2]/x[,4],0.4,	0.74),
+  intervalo(x[,2]/x[,3],	0.78,0.84),
+  intervalo(x[,4]/x[,3],	1.06,2.29)
+)
+colnames(input1) <- c("Area", "%Elipse", "%Rec", "%Circle", "E/C", "E/R", "C/R")
 colnames(inputTeste) <- c("Area", "%Elipse", "%Rec", "%Circle", "E/C", "E/R", "C/R")
 y <- factor(dados$Classe) # classificaçao
 
@@ -77,4 +92,5 @@ gerarGraficos <- function(input, expected, nome){
 print("Gerando graficos")
 gerarGraficos(x,y, "x")
 gerarGraficos(inputTeste,y, "input teste")
+gerarGraficos(input1,y, "input 1")
 print("Pronto!")

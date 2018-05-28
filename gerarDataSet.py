@@ -1,6 +1,5 @@
 import lib
 import cv2
-import debug
 from glob import glob
 import click # gera a progress bar
 imagens = glob('./imagens/naoprocessados/*/*.JPG')
