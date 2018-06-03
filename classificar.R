@@ -143,9 +143,9 @@ y <- dados$Classe # classificaçao
 #gerar os gráficos
 col <- c("DistanciaMaiorDefeito","AreaMinElipse","AreaMinRec","AreaMinCircle")
 
-for (i in seq(1,length(x))) {
-  x[,i] <- ajustaOutliers(x[,i])  
-}
+# for (i in seq(1,length(x))) {
+#   x[,i] <- ajustaOutliers(x[,i])  
+# }
 
 indicesDeTreino = NULL
 indicesDeTeste1 = NULL
@@ -164,31 +164,36 @@ for (i in unique(y)) {
   indicesDeTeste2 = c(indicesDeTeste2, indices[teste2])
 }
 
-nNeuronios = 20
-maxEpocas  = 30000
 
-input =  data.frame( #input que eu usei em python
-  intervalo(x[,1],	350,1200),
-  intervalo(x[,5]/x[,2],0.87,	0.99),
-  intervalo(x[,5]/x[,3],0.74,	0.78),
-  intervalo(x[,5]/x[,4],0.38,	0.74),
-  intervalo(x[,2]/x[,4],0.4,	0.74),
-  intervalo(x[,2]/x[,3],	0.78,0.84),
-  intervalo(x[,4]/x[,3],	1.06,2.29)
-)
+# input =  data.frame( #input que eu usei em python
+#   intervalo(x[,1],	350,1200),
+#   intervalo(x[,5]/x[,2],0.87,	0.99),
+#   intervalo(x[,5]/x[,3],0.74,	0.78),
+#   intervalo(x[,5]/x[,4],0.38,	0.74),
+#   intervalo(x[,2]/x[,4],0.4,	0.74),
+#   intervalo(x[,2]/x[,3],	0.78,0.84),
+#   intervalo(x[,4]/x[,3],	1.06,2.29)
+# )
+# for (i in seq(1,length(input))) {
+#   input[,i] = padroniza(input[,i])
+# }
 
+for (i in seq(1,length(x))) {
+  x[,i] = padroniza(x[,i])
+}
 output <- decodeClassLabels(y)
 
-for (i in seq(1,length(input))) {
-  input[,i] = padroniza(input[,i])
-}
+
+
+nNeuronios = 50
+maxEpocas  = 30000
 
 RedeCA<- NULL
-RedeCA<-mlp(input[indicesDeTreino,], output[indicesDeTreino,], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
+RedeCA<-mlp(x[indicesDeTreino,], output[indicesDeTreino,], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
             initFuncParams=c(-0.3, 0.3), learnFunc="Std_Backpropagation",
             learnFuncParams=c(0.3), updateFunc="Topological_Order",
             updateFuncParams=c(0), hiddenActFunc="Act_Logistic",
-            shufflePatterns=F, linOut=TRUE)
+            shufflePatterns=T, linOut=TRUE)
 
 plot(RedeCA$IterativeFitError,type="l",main="Erro da MLP CA")
 print(paste( "Erro da ultima época, " ,RedeCA$IterativeFitError[maxEpocas]))
@@ -199,5 +204,4 @@ print(confusionMatrix(
   factor(encodeClassLabels(fitted.values(RedeCA))),
   factor(encodeClassLabels(output[indicesDeTreino,]))
 ))
-                      
-                
+
