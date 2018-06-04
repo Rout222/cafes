@@ -14,7 +14,7 @@ dados <- read.table(
   header=T,
   sep=",",
   colClasses=c(rep("numeric",5), "numeric")
-  )
+)
 intervalo <- function(x, min, max){
   x[which(x > max)] <- max
   x[which(x < min)] <- min
@@ -163,108 +163,108 @@ for (i in unique(y)) {
   indicesDeTeste2 = c(indicesDeTeste2, indices[teste2])
 }
 
-
-# input =  data.frame( #input que eu usei em python
-#   intervalo(x[,1],	350,1200),
-#   intervalo(x[,5]/x[,2],0.87,	0.99),
-#   intervalo(x[,5]/x[,3],0.74,	0.78),
-#   intervalo(x[,5]/x[,4],0.38,	0.74),
-#   intervalo(x[,2]/x[,4],0.4,	0.74),
-#   intervalo(x[,2]/x[,3],	0.78,0.84),
-#   intervalo(x[,4]/x[,3],	1.06,2.29)
-# )
+input <- x
+input =  data.frame( #input que eu usei em python
+  x[,1],
+  x[,5]/x[,2],
+  x[,5]/x[,3],
+  x[,5]/x[,4],
+  x[,2]/x[,4],
+  x[,2]/x[,3],
+  x[,4]/x[,3]
+)
 # for (i in seq(1,length(input))) {
 #   input[,i] = padroniza(input[,i])
 # }
 
 for (i in seq(1,length(x))) {
-  x[,i] = padroniza(x[,i])
+  input[,i] = padroniza(input[,i])
 }
 output <- decodeClassLabels(y)
 
-nNeuronios = c(5,5)
+nNeuronios = c(5,5,5,5)
 maxEpocas  = 10000
-acc <- 0
 
-for (i in seq(0.05, 0.3, 0.01)) {
-  lr <- c(i)
-
-RedeCA<- NULL
-RedeCA<-mlp(x[indicesDeTreino,], output[indicesDeTreino,], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
-            initFuncParams=c(-0.3, 0.3), learnFunc="Std_Backpropagation",
-            learnFuncParams=lr, updateFunc="Topological_Order",
-            updateFuncParams=c(0), hiddenActFunc="Act_Logistic",
-            shufflePatterns=T, linOut=TRUE)
-
-library(caret)
-#print(confusionMatrix(data = yat, reference = yy, mode = "prec_recall"))
-CMtreino <- confusionMatrix(
-  factor(encodeClassLabels(fitted.values(RedeCA))),
-  factor(encodeClassLabels(output[indicesDeTreino,]))
-)
-
-CMteste1 <- confusionMatrix(
-  factor(encodeClassLabels(predict(RedeCA,x[indicesDeTeste1,]))),
-  factor(encodeClassLabels(output[indicesDeTeste1,]))
-)
-
-CMteste2 <- confusionMatrix(
-  factor(encodeClassLabels(predict(RedeCA,x[indicesDeTeste2,]))),
-  factor(encodeClassLabels(output[indicesDeTeste2,]))
-)
-CMtodos <- confusionMatrix(
-  factor(encodeClassLabels(predict(RedeCA,x))),
-  factor(encodeClassLabels(output))
-)
-
-if(acc < CMtodos$overall[1]){
-  acc <- CMtodos$overall[1]
-plot(RedeCA$IterativeFitError,type="l",main="Erro da MLP CA")
-write(
+lr<- 0.08
+file <- "output.txt"
+# for (i in seq(0.07, 0.09, 0.01)) {
+  RedeCA<- NULL
+  RedeCA<-mlp(input[indicesDeTreino,], output[indicesDeTreino,], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
+              initFuncParams=c(-0.3, 0.3), learnFunc="Std_Backpropagation",
+              learnFuncParams=c(0.08), updateFunc="Topological_Order",
+              updateFuncParams=c(0), hiddenActFunc="Act_Logistic",
+              shufflePatterns=T, linOut=TRUE)
+  
+  library(caret)
+  #print(confusionMatrix(data = yat, reference = yy, mode = "prec_recall"))
+  CMtreino <- confusionMatrix(
+    factor(encodeClassLabels(fitted.values(RedeCA))),
+    factor(encodeClassLabels(output[indicesDeTreino,]))
+  )
+  
+  CMteste1 <- confusionMatrix(
+    factor(encodeClassLabels(predict(RedeCA,input[indicesDeTeste1,]))),
+    factor(encodeClassLabels(output[indicesDeTeste1,]))
+  )
+  
+  CMteste2 <- confusionMatrix(
+    factor(encodeClassLabels(predict(RedeCA,input[indicesDeTeste2,]))),
+    factor(encodeClassLabels(output[indicesDeTeste2,]))
+  )
+  CMtodos <- confusionMatrix(
+    factor(encodeClassLabels(predict(RedeCA,input))),
+    factor(encodeClassLabels(output))
+  )
+  
+  # if(acc < CMtodos$overall[1]){
+  #   acc <- CMtodos$overall[1]
+  #   melhor <- lr
+    plot(RedeCA$IterativeFitError,type="l",main="Erro da MLP CA")
+    write(
       paste( "Erro da ultima época, " ,RedeCA$IterativeFitError[maxEpocas]),
-      file = "output.txt",
+      file = file,
       append = FALSE)
-
-write(
-  lr,
-  file = "output.txt",
-  append = TRUE)
-
-
-#plotar mlp
-library(devtools)
-source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
-
-#plot each model
-#plot.nnet(RedeCA)
-
-write.table(as.matrix(CMtreino), file = "output.txt",
-      append = TRUE, sep = "\t",row.names = FALSE,
-      col.names = FALSE)
-write.table(CMtreino$overall[1], file = "output.txt",
-      append = TRUE, sep = "\t",row.names = TRUE,
-      col.names = FALSE)
-write.table(as.matrix(CMteste1), file = "output.txt",
-            append = TRUE, sep = "\t",row.names = FALSE,
-            col.names = FALSE)
-write.table(CMteste1$overall[1], file = "output.txt",
-            append = TRUE, sep = "\t",row.names = TRUE,
-            col.names = FALSE)
-write.table(as.matrix(CMteste2), file = "output.txt",
-            append = TRUE, sep = "\t",row.names = FALSE,
-            col.names = FALSE)
-write.table(CMteste2$overall[1], file = "output.txt",
-            append = TRUE, sep = "\t",row.names = TRUE,
-            col.names = FALSE)
-write(
-  "De todos juntos",
-  file = "output.txt",
-  append = TRUE)
-write.table(as.matrix(CMtodos), file = "output.txt",
-            append = TRUE, sep = "\t",row.names = FALSE,
-            col.names = FALSE)
-write.table(CMtodos$overall[1], file = "output.txt",
-            append = TRUE, sep = "\t",row.names = TRUE,
-            col.names = FALSE)
-}
-}
+    
+    write(
+      lr,
+      file = file,
+      append = TRUE)
+    
+    
+    #plotar mlp
+    library(devtools)
+    source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
+    
+    #plot each model
+    #plot.nnet(RedeCA)
+    
+    write.table(as.matrix(CMtreino), file = file,
+                append = TRUE, sep = "\t",row.names = FALSE,
+                col.names = FALSE)
+    write.table(CMtreino$overall[1], file = file,
+                append = TRUE, sep = "\t",row.names = TRUE,
+                col.names = FALSE)
+    write.table(as.matrix(CMteste1), file = file,
+                append = TRUE, sep = "\t",row.names = FALSE,
+                col.names = FALSE)
+    write.table(CMteste1$overall[1], file = file,
+                append = TRUE, sep = "\t",row.names = TRUE,
+                col.names = FALSE)
+    write.table(as.matrix(CMteste2), file = file,
+                append = TRUE, sep = "\t",row.names = FALSE,
+                col.names = FALSE)
+    write.table(CMteste2$overall[1], file = file,
+                append = TRUE, sep = "\t",row.names = TRUE,
+                col.names = FALSE)
+    write(
+      "De todos juntos",
+      file = file,
+      append = TRUE)
+    write.table(as.matrix(CMtodos), file = file,
+                append = TRUE, sep = "\t",row.names = FALSE,
+                col.names = FALSE)
+    write.table(CMtodos$overall[1], file = file,
+                append = TRUE, sep = "\t",row.names = TRUE,
+                col.names = FALSE)
+#   }
+# }
