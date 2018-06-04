@@ -2,7 +2,8 @@ import lib
 import cv2
 from glob import glob
 import click # gera a progress bar
-imagens = glob('./imagens/naoprocessados/*/*.JPG')
+# imagens = glob('./imagens/naoprocessados/*/*.JPG')
+imagens = glob('./imagens/teste/*/*.JPG')
 config = int(open('config-corte.txt', "r").readlines()[0])
 path = {'quebrados' : 1, 'bons' : 0, 'sujeira' : 2}
 def getValues(roi):
@@ -39,7 +40,7 @@ with click.progressbar(imagens, label='Processando imagens') as bar:
 
 import csv
 cabecalho = ['convexHull','Elipse','Rec','Circle', 'Area', 'Classe']
-with open("output.csv",'w', newline='') as resultFile:
+with open("outputteste.csv",'w', newline='') as resultFile:
 	wr = csv.writer(resultFile, dialect='excel')
 	with click.progressbar(resultado, label='Escrevendo arquivo output.csv') as bar:
 		wr.writerow(cabecalho)

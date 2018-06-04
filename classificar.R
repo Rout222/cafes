@@ -10,7 +10,7 @@ if(length(dev.list()) != 0){
 set.seed(123)
 
 dados <- read.table(
-  "output.csv",
+  "outputteste.csv",
   header=T,
   sep=",",
   colClasses=c(rep("numeric",5), "numeric")
@@ -154,7 +154,6 @@ indicesDeTeste2 = NULL
 #separa os indices em 3 grupos, de 60%, 20%, 20%, por tipo
 for (i in unique(y)) {
   indices = which(y==(i))
-  # indices = sample(indices)
   size    = length(indices)
   treino = 1:(floor(0.6*size))
   teste1 = (floor(0.6*size)+1):(floor(0.8*size))
@@ -183,25 +182,89 @@ for (i in seq(1,length(x))) {
 }
 output <- decodeClassLabels(y)
 
+nNeuronios = c(5,5)
+maxEpocas  = 10000
+acc <- 0
 
-
-nNeuronios = 50
-maxEpocas  = 30000
+for (i in seq(0.05, 0.3, 0.01)) {
+  lr <- c(i)
 
 RedeCA<- NULL
 RedeCA<-mlp(x[indicesDeTreino,], output[indicesDeTreino,], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
             initFuncParams=c(-0.3, 0.3), learnFunc="Std_Backpropagation",
-            learnFuncParams=c(0.3), updateFunc="Topological_Order",
+            learnFuncParams=lr, updateFunc="Topological_Order",
             updateFuncParams=c(0), hiddenActFunc="Act_Logistic",
             shufflePatterns=T, linOut=TRUE)
 
-plot(RedeCA$IterativeFitError,type="l",main="Erro da MLP CA")
-print(paste( "Erro da ultima época, " ,RedeCA$IterativeFitError[maxEpocas]))
-
-
+library(caret)
 #print(confusionMatrix(data = yat, reference = yy, mode = "prec_recall"))
-print(confusionMatrix(
+CMtreino <- confusionMatrix(
   factor(encodeClassLabels(fitted.values(RedeCA))),
   factor(encodeClassLabels(output[indicesDeTreino,]))
-))
+)
 
+CMteste1 <- confusionMatrix(
+  factor(encodeClassLabels(predict(RedeCA,x[indicesDeTeste1,]))),
+  factor(encodeClassLabels(output[indicesDeTeste1,]))
+)
+
+CMteste2 <- confusionMatrix(
+  factor(encodeClassLabels(predict(RedeCA,x[indicesDeTeste2,]))),
+  factor(encodeClassLabels(output[indicesDeTeste2,]))
+)
+CMtodos <- confusionMatrix(
+  factor(encodeClassLabels(predict(RedeCA,x))),
+  factor(encodeClassLabels(output))
+)
+
+if(acc < CMtodos$overall[1]){
+  acc <- CMtodos$overall[1]
+plot(RedeCA$IterativeFitError,type="l",main="Erro da MLP CA")
+write(
+      paste( "Erro da ultima época, " ,RedeCA$IterativeFitError[maxEpocas]),
+      file = "output.txt",
+      append = FALSE)
+
+write(
+  lr,
+  file = "output.txt",
+  append = TRUE)
+
+
+#plotar mlp
+library(devtools)
+source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
+
+#plot each model
+#plot.nnet(RedeCA)
+
+write.table(as.matrix(CMtreino), file = "output.txt",
+      append = TRUE, sep = "\t",row.names = FALSE,
+      col.names = FALSE)
+write.table(CMtreino$overall[1], file = "output.txt",
+      append = TRUE, sep = "\t",row.names = TRUE,
+      col.names = FALSE)
+write.table(as.matrix(CMteste1), file = "output.txt",
+            append = TRUE, sep = "\t",row.names = FALSE,
+            col.names = FALSE)
+write.table(CMteste1$overall[1], file = "output.txt",
+            append = TRUE, sep = "\t",row.names = TRUE,
+            col.names = FALSE)
+write.table(as.matrix(CMteste2), file = "output.txt",
+            append = TRUE, sep = "\t",row.names = FALSE,
+            col.names = FALSE)
+write.table(CMteste2$overall[1], file = "output.txt",
+            append = TRUE, sep = "\t",row.names = TRUE,
+            col.names = FALSE)
+write(
+  "De todos juntos",
+  file = "output.txt",
+  append = TRUE)
+write.table(as.matrix(CMtodos), file = "output.txt",
+            append = TRUE, sep = "\t",row.names = FALSE,
+            col.names = FALSE)
+write.table(CMtodos$overall[1], file = "output.txt",
+            append = TRUE, sep = "\t",row.names = TRUE,
+            col.names = FALSE)
+}
+}
