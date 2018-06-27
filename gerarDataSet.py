@@ -5,7 +5,7 @@ import click # gera a progress bar
 # imagens = glob('./imagens/naoprocessados/*/*.JPG')
 imagens = glob('./imagens/teste/*/*.JPG')
 config = int(open('config-corte.txt', "r").readlines()[0])
-path = {'quebrados' : 1, 'bons' : 0, 'sujeira' : 2}
+path = {'bons' : 0,'quebrados' : 1, 'sujeira' : 2}
 def getValues(roi):
 	values = []
 	values.append(lib.distanciaMaiorDefeito  (roi))

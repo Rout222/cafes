@@ -1,7 +1,11 @@
 #limpar workspace
 rm(list=ls())
 library("RSNNS")
-library(SDMTools)
+library("SDMTools")
+library("caret")
+library("devtools")
+library("corrgram")
+
 #limpar tela
 cat('\014')
 if(length(dev.list()) != 0){
@@ -15,256 +19,169 @@ dados <- read.table(
   sep=",",
   colClasses=c(rep("numeric",5), "numeric")
 )
-intervalo <- function(x, min, max){
-  x[which(x > max)] <- max
-  x[which(x < min)] <- min
-  x
-}
+
 padroniza <- function(s)
 {
   retorno <- (as.double(s) - min(s))/(max(s) - min(s))
   
   return(retorno)
 }
-ajustaOutliers <- function(x, na.rm = TRUE, ...) 
+
+interv <- function(s)
 {
-  qnt <- quantile(x, probs=c(.25, .75), na.rm = na.rm, ...)
-  H <- 1.5 * IQR(x, na.rm = na.rm)
-  y <- x
-  y[x < (qnt[1] - H)] <- NA
-  y[x > (qnt[2] + H)] <- NA
+  vet <- rep(NA, length(s))
   
-  for(i in 1:length(y)) 
+  for (i in 1:length(s))
   {
-    #caso o primeiro valor seja NA procura o proximo valor nao NA e coloca
-    #no lugar do NA
-    if (is.na(y[1]) == TRUE)
-    {
-      encontrou = FALSE
-      cont = 1
-      posterior = NA
-      #procura o primeiro numero POSTERIOR ao valor atual que nao seja NA
-      while (encontrou == FALSE)
-      {
-        if (is.na(y[1+cont]) == TRUE)
-        {
-          cont <- cont + 1
-        }
-        else
-        {
-          posterior <- y[1+cont];
-          encontrou <- TRUE
-        }
-      }
-      
-      y[1] <- posterior
-    }
-    
-    #caso o ultimo valor seja NA procura o primeiro valor anterior que nao NA e coloca
-    #no lugar do NA
-    if (is.na(y[length(y)]) == TRUE)
-    {
-      encontrou <- FALSE
-      cont <- 1
-      anterior <- NA
-      
-      #procura o primeiro numero ANTERIOR ao valor atual que nao seja NA
-      while (encontrou == FALSE)
-      {
-        if (is.na(y[length(y)-cont]) == TRUE)
-        {
-          cont <- cont + 1
-        }
-        else
-        {
-          anterior <- y[length(y)-cont];
-          encontrou <- TRUE
-        }
-      }
-      
-      y[length(y)] <- anterior
-    }
-    
-    
-    
-    if (is.na(y[i])==TRUE)
-    {
-      encontrou <- FALSE
-      cont <- 1
-      anterior <- NA
-      
-      #procura o primeiro numero ANTERIOR ao valor atual que nao seja NA
-      while (encontrou == FALSE)
-      {
-        if (is.na(y[i-cont]) == TRUE)
-        {
-          cont <- cont + 1
-        }
-        else
-        {
-          anterior <- y[i-cont];
-          encontrou <- TRUE
-        }
-      }
-      
-      encontrou = FALSE
-      cont = 1
-      posterior = NA
-      
-      #procura o primeiro numero POSTERIOR ao valor atual que nao seja NA
-      while (encontrou == FALSE)
-      {
-        if (is.na(y[i+cont]) == TRUE)
-        {
-          cont <- cont + 1
-        }
-        else
-        {
-          posterior <- y[i+cont];
-          encontrou <- TRUE
-        }
-      }
-      
-      #executa uma media entre o anterior e posterior valor valido na serie e insere no lugar do outlier
-      y[i] <- (anterior+posterior)/2
-    }
+    if (s[i]<=0.5)
+      vet[i] <- 0
+    else if (s[i]>0.5 && s[i]<=1.5)
+      vet[i] <- 1
+    else
+      vet[i] <- 2
   }
   
-  return(y)}
-#funçoes basicas
-
-x <- dados[,-length(dados)] # retira a classificação
-
-
-y <- dados$Classe # classificaçao
-#y <- factor(dados$Classe) # classificaçao
-
-
-#gerar os gráficos
-col <- c("DistanciaMaiorDefeito","AreaMinElipse","AreaMinRec","AreaMinCircle")
-
-# for (i in seq(1,length(x))) {
-#   x[,i] <- ajustaOutliers(x[,i])  
-# }
-
-indicesDeTreino = NULL
-indicesDeTeste1 = NULL
-indicesDeTeste2 = NULL
-
-#separa os indices em 3 grupos, de 60%, 20%, 20%, por tipo
-for (i in unique(y)) {
-  indices = which(y==(i))
-  size    = length(indices)
-  treino = 1:(floor(0.6*size))
-  teste1 = (floor(0.6*size)+1):(floor(0.8*size))
-  teste2 = (floor(0.8*size)+1):size
-  indicesDeTreino = c(indicesDeTreino, indices[treino])
-  indicesDeTeste1 = c(indicesDeTeste1, indices[teste1])
-  indicesDeTeste2 = c(indicesDeTeste2, indices[teste2])
+  vet
 }
 
-input <- x
-input =  data.frame( #input que eu usei em python
-  x[,1],
-  x[,5]/x[,2],
-  x[,5]/x[,3],
-  x[,5]/x[,4],
-  x[,2]/x[,4],
-  x[,2]/x[,3],
-  x[,4]/x[,3]
+#ANALISE DE DADOS
+plot(dados$convexHull, col=dados$Classe+1, main="ConvexHull")
+plot(dados$Rec, col=dados$Classe+1, main="Rectangle")
+plot(dados$Elipse, col=dados$Classe+1, main="Elipse")
+plot(dados$Circle, col=dados$Classe+1, main="Circle")
+plot(dados$Area, col=dados$Classe+1, main="Area")
+
+corrgram(dados[,-6], order=TRUE, lower.panel=panel.shade,
+         upper.panel=panel.pie,
+         main="Correlograma das medidas")
+
+x <- dados[,-6] # entradas
+
+#CORRIGINDO O DATASET X PARA OUTRA ESCALA
+x =  data.frame( #input que eu usei em python
+  padroniza(x[,1]),
+  padroniza(x[,5]/x[,2]),
+  padroniza(x[,5]/x[,3]),
+  padroniza(x[,5]/x[,4]),
+  padroniza(x[,2]/x[,4]),
+  padroniza(x[,2]/x[,3]),
+  padroniza(x[,4]/x[,3])
 )
-# for (i in seq(1,length(input))) {
-#   input[,i] = padroniza(input[,i])
-# }
 
-for (i in seq(1,length(x))) {
-  input[,i] = padroniza(input[,i])
-}
-output <- decodeClassLabels(y)
+colunas <- c("convexHull","Area/Elipse","Area/Rec","Area/Circ","Elipse/Circle","Elipse/Rec","Circle/Rec")
 
-nNeuronios = c(5,5,5,5)
-maxEpocas  = 10000
+colnames(x) <- colunas
 
-lr<- 0.08
-file <- "output.txt"
-# for (i in seq(0.07, 0.09, 0.01)) {
-  RedeCA<- NULL
-  RedeCA<-mlp(input[indicesDeTreino,], output[indicesDeTreino,], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
+corrgram(x, order=TRUE, lower.panel=panel.shade,
+         upper.panel=panel.pie,
+         main="Correlograma das medidas")
+
+#Analise de dois componente altamente correlacionados
+plot(x$`Elipse/Circ`, col="red")
+par(new=T)
+plot(x$`Area/Circ`, col="blue")
+
+x <- x[,-4]
+
+#Correlograma final do dataset finalizado
+corrgram(x, order=TRUE, lower.panel=panel.shade,
+         upper.panel=panel.pie,
+         main="Correlograma das medidas")
+
+y <- dados$Classe # classes
+
+
+#SEPARANDO AS AMOSTRAS DE TREINO, TESTE E VALIDACAO
+classe1 <- x[1:597,]
+classe2 <- x[598:904,]
+classe3 <- x[905:988,]
+
+#levando-se em conta a classe de menor tamanho (2)
+#60 PC para treino
+treino_c1 <- classe1[1:50,]
+treino_c2 <- classe2[1:50,]
+treino_c3 <- classe3[1:50,]
+
+#20 PC para treino
+teste_c1 <- classe1[51:68,]
+teste_c2 <- classe2[51:68,]
+teste_c3 <- classe3[51:68,]
+
+#20 PC para treino
+val_c1 <- classe1[69:84,]
+val_c2 <- classe2[69:84,]
+val_c3 <- classe3[69:84,]
+
+#GERANDO O DATASET DE TREINO
+colunas <- c("convexHull","Area/Elipse","Area/Rec","Elipse/Circle","Elipse/Rec","Circle/Rec","Classe")
+
+treino <- cbind(rbind(treino_c1, treino_c2, treino_c3),
+                c(rep(0,50),rep(1,50),rep(2,50)))
+colnames(treino) <- colunas
+treino <- treino[sample(nrow(treino)),]
+
+#GERANDO O DATASET DE TESTE
+teste <- cbind(rbind(teste_c1, teste_c2, teste_c3),
+               c(rep(0,18),rep(1,18),rep(2,18)))
+colnames(teste) <- colunas
+teste <- teste[sample(nrow(teste)),]
+
+#GERANDO O DATASET DE VALIDACAO
+val <- cbind(rbind(val_c1, val_c2, val_c3),
+             c(rep(0,16),rep(1,16),rep(2,16)))
+colnames(val) <- colunas
+val <- val[sample(nrow(val)),]
+
+#PARAMETRIZAOCA DA REDE NEURAL
+treina <- TRUE
+nNeuronios = c(5, 25)
+maxEpocas  = 15000
+lr<- 0.055
+
+RedeCA<- NULL
+#TREINAMENTO DO MODELO
+if (treina) 
+{
+  
+  RedeCA<-mlp(treino[,-7], treino[,7], size=nNeuronios, maxit=maxEpocas, initFunc="Randomize_Weights",
               initFuncParams=c(-0.3, 0.3), learnFunc="Std_Backpropagation",
-              learnFuncParams=c(0.08), updateFunc="Topological_Order",
+              learnFuncParams=c(lr), updateFunc="Topological_Order",
               updateFuncParams=c(0), hiddenActFunc="Act_Logistic",
-              shufflePatterns=T, linOut=TRUE)
+              shufflePatterns=F, linOut=TRUE)
   
-  library(caret)
-  #print(confusionMatrix(data = yat, reference = yy, mode = "prec_recall"))
-  CMtreino <- confusionMatrix(
-    factor(encodeClassLabels(fitted.values(RedeCA))),
-    factor(encodeClassLabels(output[indicesDeTreino,]))
-  )
-  
-  CMteste1 <- confusionMatrix(
-    factor(encodeClassLabels(predict(RedeCA,input[indicesDeTeste1,]))),
-    factor(encodeClassLabels(output[indicesDeTeste1,]))
-  )
-  
-  CMteste2 <- confusionMatrix(
-    factor(encodeClassLabels(predict(RedeCA,input[indicesDeTeste2,]))),
-    factor(encodeClassLabels(output[indicesDeTeste2,]))
-  )
-  CMtodos <- confusionMatrix(
-    factor(encodeClassLabels(predict(RedeCA,input))),
-    factor(encodeClassLabels(output))
-  )
-  
-  # if(acc < CMtodos$overall[1]){
-  #   acc <- CMtodos$overall[1]
-  #   melhor <- lr
-    plot(RedeCA$IterativeFitError,type="l",main="Erro da MLP CA")
-    write(
-      paste( "Erro da ultima época, " ,RedeCA$IterativeFitError[maxEpocas]),
-      file = file,
-      append = FALSE)
-    
-    write(
-      lr,
-      file = file,
-      append = TRUE)
-    
-    
-    #plotar mlp
-    library(devtools)
-    source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
-    
-    #plot each model
-    #plot.nnet(RedeCA)
-    
-    write.table(as.matrix(CMtreino), file = file,
-                append = TRUE, sep = "\t",row.names = FALSE,
-                col.names = FALSE)
-    write.table(CMtreino$overall[1], file = file,
-                append = TRUE, sep = "\t",row.names = TRUE,
-                col.names = FALSE)
-    write.table(as.matrix(CMteste1), file = file,
-                append = TRUE, sep = "\t",row.names = FALSE,
-                col.names = FALSE)
-    write.table(CMteste1$overall[1], file = file,
-                append = TRUE, sep = "\t",row.names = TRUE,
-                col.names = FALSE)
-    write.table(as.matrix(CMteste2), file = file,
-                append = TRUE, sep = "\t",row.names = FALSE,
-                col.names = FALSE)
-    write.table(CMteste2$overall[1], file = file,
-                append = TRUE, sep = "\t",row.names = TRUE,
-                col.names = FALSE)
-    write(
-      "De todos juntos",
-      file = file,
-      append = TRUE)
-    write.table(as.matrix(CMtodos), file = file,
-                append = TRUE, sep = "\t",row.names = FALSE,
-                col.names = FALSE)
-    write.table(CMtodos$overall[1], file = file,
-                append = TRUE, sep = "\t",row.names = TRUE,
-                col.names = FALSE)
-#   }
-# }
+  saveRDS(RedeCA,"RedeCATreinada.rds")
+}else{
+  RedeCA <- readRDS("RedeCATreinada.rds")
+}
+
+plot(RedeCA$IterativeFitError,type="l",main="Erro da MLP CA")
+
+#AVALIANDO AS PREVISÕES NO CONJUNTO DE TESTE
+y <- treino[,7]
+yhat <- interv(predict(RedeCA, treino[,-7]))
+
+acertos_treino <- (length(which(y==yhat))*100)/length(y)
+
+#AVALIANDO AS PREVISÕES NO CONJUNTO DE TESTE
+y <- teste[,7]
+yhat <- interv(predict(RedeCA, teste[,-7]))
+
+acertos_teste <- (length(which(y==yhat))*100)/length(y)
+
+#AVALIANDO AS PREVISOES NO CONJUNTO DE VALIDACAO
+y <- val[,7]
+yhat <- interv(predict(RedeCA, val[,-7]))
+
+acertos_val <- (length(which(y==yhat))*100)/length(y)
+
+
+#AVALIANDO AS PREVISOES EM TODA A AMOSTRA
+y <- dados$Classe
+yhat <- interv(predict(RedeCA, x))
+
+acertos_total <- (length(which(y==yhat))*100)/length(y)
+
+print(paste("TREINO:", acertos_treino))
+print(paste("TESTE:", acertos_teste))
+print(paste("VALIDACAO:", acertos_val))
+print(paste("AMOSTRA:", acertos_total))
