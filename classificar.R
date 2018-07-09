@@ -1,56 +1,48 @@
 #limpar workspace
-rm(list=ls())
-library("RSNNS")
-library("SDMTools")
-library("caret")
-library("devtools")
-library("corrgram")
 
-#limpar tela
-cat('\014')
-if(length(dev.list()) != 0){
-  dev.off()  
-}
+source("lib.R")
+library("RSNNS")
+library("corrgram")
+  library("ggplot2")
+library("gridExtra")
+library("gtable")
+limpar()
+
 set.seed(123)
 
 dados <- read.table(
-  "outputteste.csv",
+  "entrada.csv",
   header=T,
   sep=",",
-  colClasses=c(rep("numeric",5), "numeric")
+  colClasses=c(rep("numeric",6))
 )
 
-padroniza <- function(s)
-{
-  retorno <- (as.double(s) - min(s))/(max(s) - min(s))
-  
-  return(retorno)
-}
-
-interv <- function(s)
-{
-  vet <- rep(NA, length(s))
-  
-  for (i in 1:length(s))
-  {
-    if (s[i]<=0.5)
-      vet[i] <- 0
-    else if (s[i]>0.5 && s[i]<=1.5)
-      vet[i] <- 1
-    else
-      vet[i] <- 2
-  }
-  
-  vet
-}
-
 #ANALISE DE DADOS
-plot(dados$convexHull, col=dados$Classe+1, main="ConvexHull")
-plot(dados$Rec, col=dados$Classe+1, main="Rectangle")
-plot(dados$Elipse, col=dados$Classe+1, main="Elipse")
-plot(dados$Circle, col=dados$Classe+1, main="Circle")
-plot(dados$Area, col=dados$Classe+1, main="Area")
-
+classes_nome <- c("Inteiros", "Quebrados", "Impurezas")
+classes_decode <- classes_nome[dados$Classe+1]
+p = array(list(),5)
+p[[1]] <- ggplot(dados, aes(convexHull))+ scale_fill_brewer(palette = "Spectral") + labs(title="Plotagem de densidade", 
+                                         x="Defeito de convexidade",
+                                         y="Densidade",
+                                         fill="Tipos") + geom_density(aes(fill=classes_decode), alpha=0.8)
+p[[2]] <- ggplot(dados, aes(Rec))+ scale_fill_brewer(palette = "Spectral") + labs(title="Plotagem de densidade", 
+                                                x="Área do retangulo",
+                                                y="Densidade",
+                                                fill="Tipos")+ geom_density(aes(fill=classes_decode), alpha=0.8)
+p[[3]] <- ggplot(dados, aes(Elipse))+ scale_fill_brewer(palette = "Spectral") + labs(title="Plotagem de densidade", 
+                                         x="Área da elipse",
+                                         y="Densidade",
+                                         fill="Tipos")+ geom_density(aes(fill=classes_decode), alpha=0.8)
+p[[4]] <- ggplot(dados, aes(Circle))+ scale_fill_brewer(palette = "Spectral") + labs(title="Plotagem de densidade", 
+                                            x="Área do círculo",
+                                            y="Densidade",
+                                            fill="Tipos")+ geom_density(aes(fill=classes_decode), alpha=0.8)
+p[[5]] <- ggplot(dados, aes(Area))+ scale_fill_brewer(palette = "Spectral") + labs(title="Plotagem de densidade", 
+                                            x="Área do contorno",
+                                            y="Densidade",
+                                            fill="Tipos")+ geom_density(aes(fill=classes_decode), alpha=0.8)
+plotaGraficos(p,2)
+stop()
 corrgram(dados[,-6], order=TRUE, lower.panel=panel.shade,
          upper.panel=panel.pie,
          main="Correlograma das medidas")
@@ -133,10 +125,10 @@ colnames(val) <- colunas
 val <- val[sample(nrow(val)),]
 
 #PARAMETRIZAOCA DA REDE NEURAL
-treina <- TRUE
+treina <- F
 nNeuronios = c(5, 25)
 maxEpocas  = 15000
-lr<- 0.055
+lr<- 0.08
 
 RedeCA<- NULL
 #TREINAMENTO DO MODELO
@@ -158,26 +150,26 @@ plot(RedeCA$IterativeFitError,type="l",main="Erro da MLP CA")
 
 #AVALIANDO AS PREVISÕES NO CONJUNTO DE TESTE
 y <- treino[,7]
-yhat <- interv(predict(RedeCA, treino[,-7]))
+yhat <- round(predict(RedeCA, treino[,-7]))
 
 acertos_treino <- (length(which(y==yhat))*100)/length(y)
 
 #AVALIANDO AS PREVISÕES NO CONJUNTO DE TESTE
 y <- teste[,7]
-yhat <- interv(predict(RedeCA, teste[,-7]))
+yhat <- round(predict(RedeCA, teste[,-7]))
 
 acertos_teste <- (length(which(y==yhat))*100)/length(y)
 
 #AVALIANDO AS PREVISOES NO CONJUNTO DE VALIDACAO
 y <- val[,7]
-yhat <- interv(predict(RedeCA, val[,-7]))
+yhat <- round(predict(RedeCA, val[,-7]))
 
 acertos_val <- (length(which(y==yhat))*100)/length(y)
 
 
 #AVALIANDO AS PREVISOES EM TODA A AMOSTRA
 y <- dados$Classe
-yhat <- interv(predict(RedeCA, x))
+yhat <- round(predict(RedeCA, x))
 
 acertos_total <- (length(which(y==yhat))*100)/length(y)
 
@@ -185,3 +177,24 @@ print(paste("TREINO:", acertos_treino))
 print(paste("TESTE:", acertos_teste))
 print(paste("VALIDACAO:", acertos_val))
 print(paste("AMOSTRA:", acertos_total))
+
+
+
+theme_set(theme_bw()) 
+g <- ggplot(dados, aes(1:length(dados[,1]), Rec))+ 
+  labs(title = "New plot title", subtitle = "A subtitle", colour = "Tipo")
+g + geom_jitter(aes(col=classes_decode))
+
+
+
+g <- ggplot(dados, aes(Rec))+ scale_fill_brewer(palette = "Spectral") + geom_density(aes(fill=classes_decode), alpha=0.8) + 
+  labs(title="Plotagem de densidade", 
+       caption="Fonte: Autor",
+       x="Area do retangulo",
+       y="Densidade",
+       fill="Tipos")
+
+g <- ggplot(dados, aes(Rec)) + labs(title="Plotagem de densidade", 
+                                    x="Area do retangulo",
+                                    y="Densidade",
+                                    fill="Tipos")
