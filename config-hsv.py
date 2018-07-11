@@ -8,7 +8,7 @@ def nothing(x):
 cv2.namedWindow('Result',cv2.WINDOW_NORMAL)
 # Starting with 100's to prevent error while masking
 config = open('config-hsv.txt', "r").readlines()
-h,s,v = 100,100,100
+h,s,v = 100,100,100 
 # Creating track bar
 paths = glob("./imagens/teste/*/*.jpg")
 cv2.createTrackbar('h', 'Result',int(config[0]),179,nothing)
