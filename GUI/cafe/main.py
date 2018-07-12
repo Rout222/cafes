@@ -8,6 +8,9 @@ import wx
 import wx.lib.inspection
 import functions
 from glob import glob
+
+#gauge em threads
+from wx.lib.pubsub import pub
 # begin wxGlade: dependencies
 # end wxGlade
 
@@ -19,9 +22,42 @@ workinDir = os.getcwd()
 # end wxGlade
 
 
+
+class alertDialog(wx.Dialog):
+    def __init__(self, *args, **kwds):
+        # begin wxGlade: alertDialog.__init__
+        wx.Dialog.__init__(self, *args, **kwds)
+        self.button_OK_dialog = wx.Button(self, wx.ID_OK, "")
+
+        self.__set_properties()
+        self.__do_layout()
+        # end wxGlade
+        self.Center()
+
+    def __set_properties(self):
+        # begin wxGlade: alertDialog.__set_properties
+        self.SetTitle("Resultado")
+        # end wxGlade
+
+    def __do_layout(self):
+        # begin wxGlade: alertDialog.__do_layout
+        sizer_dialog = wx.BoxSizer(wx.VERTICAL)
+        sizer_button_dialog = wx.BoxSizer(wx.HORIZONTAL)
+        label_dialog = wx.StaticText(self, wx.ID_ANY, "Terminou", style=wx.ST_ELLIPSIZE_MIDDLE)
+        label_dialog.SetFont(wx.Font(30, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
+        sizer_dialog.Add(label_dialog, 0, wx.ALIGN_CENTER, 0)
+        sizer_button_dialog.Add(self.button_OK_dialog, 0, 0, 0)
+        sizer_dialog.Add(sizer_button_dialog, 0, wx.ALIGN_RIGHT | wx.ALL, 5)
+        self.SetSizer(sizer_dialog)
+        sizer_dialog.Fit(self)
+        self.Layout()
+        # end wxGlade
+
+# end of class alertDialog
 class main(wx.Frame):
     def __init__(self, *args, **kwds):
         #wx.lib.inspection.InspectionTool().Show()
+        self.dialog = alertDialog(None)
 
         # begin wxGlade: main.__init__
         kwds["style"] = kwds.get("style", 0) | wx.DEFAULT_FRAME_STYLE
@@ -46,6 +82,7 @@ class main(wx.Frame):
         self.panel_threshold = wx.Panel(self.notebook_ConfiguracoesdoOPENCV, wx.ID_ANY, style=wx.FULL_REPAINT_ON_RESIZE)
         self.notebook_saida = wx.Panel(self.notebook, wx.ID_ANY)
         self.text_separador = wx.TextCtrl(self.notebook_saida, wx.ID_ANY, "", style=wx.TE_PROCESS_ENTER)
+        self.text_outputname = wx.TextCtrl(self.notebook_saida, wx.ID_ANY, "output.txt", style=wx.TE_PROCESS_ENTER)
         self.list_classes = wx.ListCtrl(self.notebook_saida, wx.ID_ANY, style=wx.FULL_REPAINT_ON_RESIZE | wx.LC_HRULES | wx.LC_REPORT | wx.LC_VRULES)
         self.gauge = wx.Gauge(self.notebook_saida, wx.ID_ANY, 10)
         self.button_gerar = wx.Button(self.notebook_saida, wx.ID_ADD, "", style=wx.BORDER_NONE)
@@ -61,7 +98,9 @@ class main(wx.Frame):
         self.Bind(wx.EVT_COMMAND_SCROLL, self.slider_image_change, self.slider_v1)
         self.Bind(wx.EVT_COMMAND_SCROLL, self.slider_image_change, self.slider_imagens)
         self.Bind(wx.EVT_TEXT, self.onPressEnter, self.text_separador)
-        self.Bind(wx.EVT_TEXT_ENTER, self.onPressEnter, self.text_separador)
+        self.Bind(wx.EVT_TEXT_ENTER, self.onOk, self.text_separador)
+        self.Bind(wx.EVT_TEXT, self.onChangeOutputName, self.text_outputname)
+        self.Bind(wx.EVT_TEXT_ENTER, self.onOk, self.text_outputname)
         self.Bind(wx.EVT_BUTTON, self.onOk, self.button_gerar)
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.changing, self.notebook)
         # end wxGlade
@@ -78,18 +117,23 @@ class main(wx.Frame):
         _icon.CopyFromBitmap(wx.Bitmap("./icos/ico.ico", wx.BITMAP_TYPE_ANY))
         self.SetIcon(_icon)
         self.text_separador.SetToolTip(u"Caracteres que separam a classe do nome da foto.\n\nN\u00e3o se pode ter o caractere . como separador")
+        self.text_outputname.SetToolTip(u"Caracteres que separam a classe do nome da foto.\n\nN\u00e3o se pode ter o caractere . como separador")
         self.list_classes.AppendColumn("Classe", format=wx.LIST_FORMAT_LEFT, width=-1)
         self.list_classes.AppendColumn("Quantidade", format=wx.LIST_FORMAT_LEFT, width=-1)
         self.button_gerar.SetBackgroundColour(wx.Colour(9, 255, 20))
         self.button_gerar.SetForegroundColour(wx.Colour(0, 0, 0))
         self.button_gerar.SetFont(wx.Font(15, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
         # end wxGlade
+        pub.subscribe(self.updateProgress, "update")
+
 
     def __do_layout(self):
         # begin wxGlade: main.__do_layout
         sizer_main = wx.BoxSizer(wx.VERTICAL)
         sizer_saida = wx.BoxSizer(wx.VERTICAL)
         sizer_gauge = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_inputs = wx.BoxSizer(wx.VERTICAL)
+        sizer_outputname = wx.BoxSizer(wx.HORIZONTAL)
         sizer_separador = wx.BoxSizer(wx.HORIZONTAL)
         sizer_config = wx.BoxSizer(wx.VERTICAL)
         sizer_fotos = wx.BoxSizer(wx.HORIZONTAL)
@@ -126,9 +170,14 @@ class main(wx.Frame):
         sizer_config.Add(sizer_fotos, 2, wx.EXPAND, 0)
         self.notebook_ConfiguracoesdoOPENCV.SetSizer(sizer_config)
         label_separardor = wx.StaticText(self.notebook_saida, wx.ID_ANY, "Separador  ", style=wx.ALIGN_CENTER | wx.ST_ELLIPSIZE_MIDDLE)
-        sizer_separador.Add(label_separardor, 0, wx.ALIGN_CENTER | wx.ALL | wx.SHAPED, 0)
-        sizer_separador.Add(self.text_separador, 0, wx.ALIGN_CENTER, 0)
-        sizer_saida.Add(sizer_separador, 0, wx.ALL, 1)
+        sizer_separador.Add(label_separardor, 1, wx.ALIGN_CENTER | wx.ALL, 0)
+        sizer_separador.Add(self.text_separador, 1, wx.ALIGN_CENTER, 0)
+        sizer_inputs.Add(sizer_separador, 0, wx.ALL, 1)
+        label_outputname = wx.StaticText(self.notebook_saida, wx.ID_ANY, "Arquivo Saida", style=wx.ALIGN_CENTER | wx.ST_ELLIPSIZE_MIDDLE)
+        sizer_outputname.Add(label_outputname, 1, wx.ALIGN_CENTER | wx.ALL, 0)
+        sizer_outputname.Add(self.text_outputname, 1, wx.ALIGN_CENTER, 0)
+        sizer_inputs.Add(sizer_outputname, 0, wx.ALL, 1)
+        sizer_saida.Add(sizer_inputs, 0, wx.EXPAND, 0)
         sizer_saida.Add(self.list_classes, 1, wx.ALIGN_CENTER | wx.EXPAND, 0)
         sizer_gauge.Add(self.gauge, 1, wx.EXPAND, 0)
         sizer_gauge.Add(self.button_gerar, 0, wx.ALIGN_CENTER, 0)
@@ -150,6 +199,7 @@ class main(wx.Frame):
                                    wx.ID_ANY, wx.Bitmap(
                                        ".\\icos\\img.ico",
                                        wx.BITMAP_TYPE_ANY))
+        self.Center()
 
     def slider_image_change(self, event):  # wxGlade: main.<event_handler>
 
@@ -199,8 +249,27 @@ class main(wx.Frame):
         classes = functions.makeClass(globs, self.text_separador.GetValue())
         for classe, quantidade in classes.items():
             self.list_classes.Append([classe, quantidade])
+
     def onOk(self, event):  # wxGlade: main.<event_handler>
-        self.gauge.SetValue(10)
+        if(len(globs) >= 1 and len(self.text_outputname.GetValue()) > 0):
+            self.gauge.SetRange(len(globs) + 1)
+            self.gauge.SetValue(0)
+            functions.OutputThread(globs,
+                                   self.text_separador.GetValue(),
+                                   self.text_outputname.GetValue())
+
+    def updateProgress(self, msg):
+        self.gauge.SetValue(self.gauge.GetValue() + 1)
+        if(self.gauge.GetValue() == self.gauge.GetRange()):
+            self.dialog.ShowModal()
+            
+
+    def onChangeOutputName(self, event):  # wxGlade: main.<event_handler>
+        if(len(self.text_outputname.GetValue()) > 0):
+            self.button_gerar.Enable()
+        else:
+            self.button_gerar.Disable()
+
 # end of class main
 
 
@@ -211,7 +280,7 @@ class MyApp(wx.App):
         self.frame.Show()
         return True
 
-# end of class MyApp
+# end of class MyApp    
 
 
 if __name__ == "__main__":
