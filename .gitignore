@@ -2,6 +2,8 @@
 .Rhistory
 .Rapp.history
 
+#
+/imagens/*/*
 # Session Data files
 .RData
 
