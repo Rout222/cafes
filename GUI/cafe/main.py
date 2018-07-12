@@ -26,7 +26,8 @@ class main(wx.Frame):
         # begin wxGlade: main.__init__
         kwds["style"] = kwds.get("style", 0) | wx.DEFAULT_FRAME_STYLE
         wx.Frame.__init__(self, *args, **kwds)
-        self.notebook = wx.Notebook(self, wx.ID_ANY, style=wx.NB_MULTILINE | wx.NB_TOP)
+        self.SetSize((900, 640))
+        self.notebook = wx.Notebook(self, wx.ID_ANY)
         self.notebook_dir = wx.Panel(self.notebook, wx.ID_ANY)
         self.dirselect = wx.DirPickerCtrl(self.notebook_dir, wx.ID_ANY, path=workinDir)
         self.dirselect.Bind(wx.EVT_DIRPICKER_CHANGED, self.onChangeDir)
@@ -43,7 +44,11 @@ class main(wx.Frame):
         self.slider_imagens = wx.Slider(self.panel_configs, wx.ID_ANY, 0, 0, 10, style=wx.SL_HORIZONTAL | wx.SL_LABELS)
         self.panel_original = wx.Panel(self.notebook_ConfiguracoesdoOPENCV, wx.ID_ANY, style=wx.FULL_REPAINT_ON_RESIZE)
         self.panel_threshold = wx.Panel(self.notebook_ConfiguracoesdoOPENCV, wx.ID_ANY, style=wx.FULL_REPAINT_ON_RESIZE)
-        self.notebook_teste = wx.Panel(self.notebook, wx.ID_ANY)
+        self.notebook_saida = wx.Panel(self.notebook, wx.ID_ANY)
+        self.text_separador = wx.TextCtrl(self.notebook_saida, wx.ID_ANY, "", style=wx.TE_PROCESS_ENTER)
+        self.list_classes = wx.ListCtrl(self.notebook_saida, wx.ID_ANY, style=wx.FULL_REPAINT_ON_RESIZE | wx.LC_HRULES | wx.LC_REPORT | wx.LC_VRULES)
+        self.gauge = wx.Gauge(self.notebook_saida, wx.ID_ANY, 10)
+        self.button_gerar = wx.Button(self.notebook_saida, wx.ID_ADD, "", style=wx.BORDER_NONE)
 
         self.__set_properties()
         self.__do_layout()
@@ -55,6 +60,9 @@ class main(wx.Frame):
         self.Bind(wx.EVT_COMMAND_SCROLL, self.slider_image_change, self.slider_s1)
         self.Bind(wx.EVT_COMMAND_SCROLL, self.slider_image_change, self.slider_v1)
         self.Bind(wx.EVT_COMMAND_SCROLL, self.slider_image_change, self.slider_imagens)
+        self.Bind(wx.EVT_TEXT, self.onPressEnter, self.text_separador)
+        self.Bind(wx.EVT_TEXT_ENTER, self.onPressEnter, self.text_separador)
+        self.Bind(wx.EVT_BUTTON, self.onOk, self.button_gerar)
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.changing, self.notebook)
         # end wxGlade
 
@@ -69,12 +77,20 @@ class main(wx.Frame):
         _icon = wx.NullIcon
         _icon.CopyFromBitmap(wx.Bitmap("./icos/ico.ico", wx.BITMAP_TYPE_ANY))
         self.SetIcon(_icon)
-        self.notebook.SetMinSize((895, 500))
+        self.text_separador.SetToolTip(u"Caracteres que separam a classe do nome da foto.\n\nN\u00e3o se pode ter o caractere . como separador")
+        self.list_classes.AppendColumn("Classe", format=wx.LIST_FORMAT_LEFT, width=-1)
+        self.list_classes.AppendColumn("Quantidade", format=wx.LIST_FORMAT_LEFT, width=-1)
+        self.button_gerar.SetBackgroundColour(wx.Colour(9, 255, 20))
+        self.button_gerar.SetForegroundColour(wx.Colour(0, 0, 0))
+        self.button_gerar.SetFont(wx.Font(15, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
         # end wxGlade
 
     def __do_layout(self):
         # begin wxGlade: main.__do_layout
         sizer_main = wx.BoxSizer(wx.VERTICAL)
+        sizer_saida = wx.BoxSizer(wx.VERTICAL)
+        sizer_gauge = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_separador = wx.BoxSizer(wx.HORIZONTAL)
         sizer_config = wx.BoxSizer(wx.VERTICAL)
         sizer_fotos = wx.BoxSizer(wx.HORIZONTAL)
         self.sizer_threshold = wx.StaticBoxSizer(wx.StaticBox(self.notebook_ConfiguracoesdoOPENCV, wx.ID_ANY, "Threshold"), wx.VERTICAL)
@@ -87,7 +103,7 @@ class main(wx.Frame):
         sizer_hsv = wx.BoxSizer(wx.HORIZONTAL)
         sizer_dir = wx.BoxSizer(wx.VERTICAL)
         sizer_dir.Add(self.dirselect, 0, wx.ALL | wx.EXPAND, 0)
-        sizer_dir.Add(self.thumbs, 0, wx.ALL | wx.EXPAND, 0)
+        sizer_dir.Add(self.thumbs, 1, wx.ALL | wx.EXPAND, 0)
         self.notebook_dir.SetSizer(sizer_dir)
         sizer_hsv.Add(self.slider_h, 1, 0, 0)
         sizer_hsv.Add(self.slider_s, 1, 0, 0)
@@ -109,12 +125,20 @@ class main(wx.Frame):
         sizer_fotos.Add(self.sizer_threshold, 1, wx.ALIGN_CENTER | wx.EXPAND, 0)
         sizer_config.Add(sizer_fotos, 2, wx.EXPAND, 0)
         self.notebook_ConfiguracoesdoOPENCV.SetSizer(sizer_config)
+        label_separardor = wx.StaticText(self.notebook_saida, wx.ID_ANY, "Separador  ", style=wx.ALIGN_CENTER | wx.ST_ELLIPSIZE_MIDDLE)
+        sizer_separador.Add(label_separardor, 0, wx.ALIGN_CENTER | wx.ALL | wx.SHAPED, 0)
+        sizer_separador.Add(self.text_separador, 0, wx.ALIGN_CENTER, 0)
+        sizer_saida.Add(sizer_separador, 0, wx.ALL, 1)
+        sizer_saida.Add(self.list_classes, 1, wx.ALIGN_CENTER | wx.EXPAND, 0)
+        sizer_gauge.Add(self.gauge, 1, wx.EXPAND, 0)
+        sizer_gauge.Add(self.button_gerar, 0, wx.ALIGN_CENTER, 0)
+        sizer_saida.Add(sizer_gauge, 0, wx.EXPAND, 0)
+        self.notebook_saida.SetSizer(sizer_saida)
         self.notebook.AddPage(self.notebook_dir, "Diretorio de trabalho")
         self.notebook.AddPage(self.notebook_ConfiguracoesdoOPENCV, "Configuracoes do OPENCV")
-        self.notebook.AddPage(self.notebook_teste, "teste")
+        self.notebook.AddPage(self.notebook_saida, "Configuracoes da saida")
         sizer_main.Add(self.notebook, 1, wx.ALIGN_CENTER | wx.ALL | wx.EXPAND, 0)
         self.SetSizer(sizer_main)
-        sizer_main.Fit(self)
         self.Layout()
         # end wxGlade
         bitmap_1 = wx.StaticBitmap(self.panel_original,
@@ -170,6 +194,13 @@ class main(wx.Frame):
             wx.StaticBitmap(self.panel_threshold, wx.ID_ANY, wx.Bitmap(
                 "C:\\Users\\Rout\\Documents\\wxpython\\img.ico", wx.BITMAP_TYPE_ANY))
 
+    def onPressEnter(self, event):  # wxGlade: main.<event_handler>
+        self.list_classes.DeleteAllItems()
+        classes = functions.makeClass(globs, self.text_separador.GetValue())
+        for classe, quantidade in classes.items():
+            self.list_classes.Append([classe, quantidade])
+    def onOk(self, event):  # wxGlade: main.<event_handler>
+        self.gauge.SetValue(10)
 # end of class main
 
 
