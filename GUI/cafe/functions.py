@@ -98,7 +98,7 @@ class OutputThread(Thread):
         cabecalho = ['convexHull', 'Elipse',
                      'Rec', 'Circle', 'Area',
                      'Classe']
-        with open(self.outputFile, 'w', newline='') as resultFile:
+        with open(self.outputFile, 'w+', newline='') as resultFile:
             wr = csv.writer(resultFile, dialect='excel')
             wr.writerow(cabecalho)
             for item in resultado:
